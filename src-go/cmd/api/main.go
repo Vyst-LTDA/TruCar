@@ -27,6 +27,7 @@ func main() {
 			handlers.RegisterJourneyRoutes(authRequired)
 			handlers.RegisterFuelLogRoutes(authRequired)
 			handlers.RegisterMaintenanceRoutes(authRequired)
+			handlers.RegisterImplementRoutes(authRequired)
 		}
 	}
 
