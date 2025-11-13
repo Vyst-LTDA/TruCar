@@ -1,0 +1,50 @@
+
+2025/11/13 13:27:31 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.042ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="users"
+
+2025/11/13 13:27:31 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.106ms] [34;1m[rows:5][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "users" AND sql IS NOT NULL order by type = "table" desc
+
+2025/11/13 13:27:31 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.037ms] [34;1m[rows:-][0m SELECT * FROM `users` LIMIT 1
+
+2025/11/13 13:27:31 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.037ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "table" AND tbl_name = "users" AND (sql LIKE "%CONSTRAINT ""fk_organizations_users"" %" OR sql LIKE "%CONSTRAINT fk_organizations_users %" OR sql LIKE "%CONSTRAINT `fk_organizations_users`%" OR sql LIKE "%CONSTRAINT [fk_organizations_users]%" OR sql LIKE "%CONSTRAINT 	fk_organizations_users	%")
+
+2025/11/13 13:27:31 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.018ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "users" AND name = "idx_users_full_name"
+
+2025/11/13 13:27:31 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.014ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "users" AND name = "idx_users_email"
+
+2025/11/13 13:27:31 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.013ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "users" AND name = "idx_users_employee_id"
+
+2025/11/13 13:27:31 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.020ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "users" AND name = "idx_users_reset_password_token"
+
+2025/11/13 13:27:31 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.012ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="organizations"
+
+2025/11/13 13:27:31 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.209ms] [34;1m[rows:2][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "organizations" AND sql IS NOT NULL order by type = "table" desc
+
+2025/11/13 13:27:31 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.029ms] [34;1m[rows:-][0m SELECT * FROM `organizations` LIMIT 1
+
+2025/11/13 13:27:31 [32m/app/go/internal/db/database.go:39
+[0m[33m[0.020ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "organizations" AND name = "idx_organizations_name"
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /api/v1/users             --> go-api/internal/handlers.GetUsers (3 handlers)
+[GIN-debug] POST   /api/v1/users             --> go-api/internal/handlers.CreateUserHandler (3 handlers)
+[GIN-debug] GET    /api/v1/users/:id         --> go-api/internal/handlers.GetUser (3 handlers)
+[GIN-debug] PUT    /api/v1/users/:id         --> go-api/internal/handlers.UpdateUserHandler (3 handlers)
+[GIN-debug] DELETE /api/v1/users/:id         --> go-api/internal/handlers.DeleteUserHandler (3 handlers)
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8080
