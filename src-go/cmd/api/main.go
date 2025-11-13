@@ -1,20 +1,30 @@
 package main
 
 import (
-	"log"
+	"context"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
 	"go-api/internal/api"
 	"go-api/internal/api/routes"
 	"go-api/internal/config"
 	"go-api/internal/db"
+	"go-api/internal/logging"
 	"go-api/internal/middleware"
 	"go-api/internal/repositories"
 	"go-api/internal/services"
 )
 
 func main() {
+	logging.InitLogger()
+	defer logging.Logger.Sync()
+
 	config.LoadConfig()
 
 	gormDB := db.InitDB()
@@ -50,7 +60,15 @@ func main() {
 	maintenanceService := services.NewMaintenanceService(maintenanceRepository)
 	maintenanceHandler := api.NewMaintenanceHandler(maintenanceService)
 
+	notificationRepository := repositories.NewNotificationRepository(gormDB)
+	notificationService := services.NewNotificationService(notificationRepository)
+
+	fineRepository := repositories.NewFineRepository(gormDB)
+	fineService := services.NewFineService(fineRepository, notificationService)
+	fineHandler := api.NewFineHandler(fineService)
+
 	router := gin.Default()
+	router.Use(middleware.LoggingMiddleware())
 	router.Use(middleware.ErrorHandler())
 
 	apiV1 := router.Group("/api/v1")
@@ -66,10 +84,31 @@ func main() {
 			routes.RegisterJourneyRoutes(journeyHandler)(authRequired)
 			routes.RegisterFuelLogRoutes(fuelLogHandler)(authRequired)
 			routes.RegisterMaintenanceRoutes(maintenanceHandler)(authRequired)
+			routes.RegisterFineRoutes(fineHandler)(authRequired)
 		}
 	}
 
-	if err := router.Run(":" + config.AppConfig.SERVER_PORT); err != nil {
-		log.Fatal("Failed to run server:", err)
+	srv := &http.Server{
+		Addr:    ":" + config.AppConfig.SERVER_PORT,
+		Handler: router,
 	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logging.Logger.Fatal("Failed to run server", zap.Error(err))
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	logging.Logger.Info("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		logging.Logger.Fatal("Server forced to shutdown", zap.Error(err))
+	}
+
+	logging.Logger.Info("Server exiting")
 }

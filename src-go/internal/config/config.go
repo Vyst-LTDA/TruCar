@@ -1,10 +1,11 @@
 package config
 
 import (
-	"log"
 	"os"
 
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
+	"go-api/internal/logging"
 )
 
 type Config struct {
@@ -34,10 +35,9 @@ func LoadConfig() {
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// Config file not found; ignore error if desired
-			log.Println("Could not find .env file, using default values")
+			logging.Logger.Warn("Could not find .env file, using default values")
 		} else {
-			log.Fatalf("Error reading config file: %s", err)
+			logging.Logger.Fatal("Error reading config file", zap.Error(err))
 		}
 	}
 
@@ -45,7 +45,7 @@ func LoadConfig() {
 	if _, err := os.Stat(".env"); os.IsNotExist(err) {
 		f, err := os.Create(".env")
 		if err != nil {
-			log.Fatalf("Error creating .env file: %s", err)
+			logging.Logger.Fatal("Error creating .env file", zap.Error(err))
 		}
 		defer f.Close()
 		// Write default values to .env file
@@ -56,6 +56,6 @@ func LoadConfig() {
 
 	err := viper.Unmarshal(&AppConfig)
 	if err != nil {
-		log.Fatalf("Unable to decode into struct, %v", err)
+		logging.Logger.Fatal("Unable to decode into struct", zap.Error(err))
 	}
 }

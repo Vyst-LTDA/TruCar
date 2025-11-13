@@ -2,9 +2,10 @@ package db
 
 import (
 	"context"
-	"log"
 
 	"github.com/go-redis/redis/v8"
+	"go.uber.org/zap"
+	"go-api/internal/logging"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
@@ -15,7 +16,7 @@ import (
 func InitDB() *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(config.AppConfig.DB_DSN), &gorm.Config{})
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		logging.Logger.Fatal("Failed to connect to database", zap.Error(err))
 	}
 	return db
 }
@@ -32,7 +33,7 @@ func Migrate(db *gorm.DB) {
 		&models.MaintenanceComment{},
 	)
 	if err != nil {
-		log.Fatal("Failed to migrate database:", err)
+		logging.Logger.Fatal("Failed to migrate database", zap.Error(err))
 	}
 }
 
@@ -45,7 +46,7 @@ func InitRedis() *redis.Client {
 
 	_, err := rdb.Ping(context.Background()).Result()
 	if err != nil {
-		log.Fatalf("Could not connect to Redis: %v", err)
+		logging.Logger.Fatal("Could not connect to Redis", zap.Error(err))
 	}
 
 	return rdb
