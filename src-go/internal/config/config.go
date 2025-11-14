@@ -15,6 +15,7 @@ type Config struct {
 	REDIS_ADDR    string `mapstructure:"REDIS_ADDR"`
 	REDIS_PASSWORD string `mapstructure:"REDIS_PASSWORD"`
 	REDIS_DB      int    `mapstructure:"REDIS_DB"`
+	SECRET_KEY    string `mapstructure:"SECRET_KEY"`
 }
 
 var AppConfig *Config
@@ -32,6 +33,7 @@ func LoadConfig() {
 	viper.SetDefault("REDIS_ADDR", "localhost:6379")
 	viper.SetDefault("REDIS_PASSWORD", "")
 	viper.SetDefault("REDIS_DB", 0)
+	viper.SetDefault("SECRET_KEY", "a-very-secret-key-of-32-bytes-!")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -52,6 +54,7 @@ func LoadConfig() {
 		f.WriteString("DB_DSN=test.db\n")
 		f.WriteString("JWT_SECRET=your-secret-key\n")
 		f.WriteString("SERVER_PORT=8080\n")
+		f.WriteString("SECRET_KEY=a-very-secret-key-of-32-bytes-!\n")
 	}
 
 	err := viper.Unmarshal(&AppConfig)

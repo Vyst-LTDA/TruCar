@@ -19,6 +19,9 @@ type Organization struct {
 	Sector       Sector `gorm:"type:sector;not null"`
 	VehicleLimit int    `gorm:"default:5;not null"`
 	DriverLimit  int    `gorm:"default:10;not null"`
+	FuelProviderName                   *string `gorm:"size:100"`
+	EncryptedFuelProviderAPIKey        *string `gorm:"type:text"`
+	EncryptedFuelProviderAPISecret     *string `gorm:"type:text"`
 	Users        []User
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

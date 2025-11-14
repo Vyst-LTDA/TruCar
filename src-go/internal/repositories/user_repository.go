@@ -14,7 +14,8 @@ type UserRepository interface {
 	FindByEmail(email string) (*models.User, error)
 	FindByOrganization(orgID uint, skip, limit int) ([]models.User, error)
 	FindAll(skip, limit int) ([]models.User, error) // Para Super Admin
-	FindByRole(role models.UserRole) ([]models.User, error) // Para Super Admin
+	FindByRole(role models.UserRole) ([]models.User, error)
+	FindByRoleAndOrganization(orgID uint, role models.UserRole) ([]models.User, error)
 	CountByOrganization(orgID uint) (int64, error)
 	CountDriversByOrganization(orgID uint) (int64, error)
 	Create(user *models.User) error
@@ -55,6 +56,14 @@ func (r *userRepository) FindByEmail(email string) (*models.User, error) {
 func (r *userRepository) FindByOrganization(orgID uint, skip, limit int) ([]models.User, error) {
 	var users []models.User
 	if err := r.db.Where("organization_id = ?", orgID).Offset(skip).Limit(limit).Find(&users).Error; err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
+func (r *userRepository) FindByRole(role models.UserRole) ([]models.User, error) {
+	var users []models.User
+	if err := r.db.Where("role = ?", role).Find(&users).Error; err != nil {
 		return nil, err
 	}
 	return users, nil
@@ -108,9 +117,9 @@ func (r *userRepository) FindAll(skip, limit int) ([]models.User, error) {
 	return users, nil
 }
 
-func (r *userRepository) FindByRole(role models.UserRole) ([]models.User, error) {
+func (r *userRepository) FindByRoleAndOrganization(orgID uint, role models.UserRole) ([]models.User, error) {
 	var users []models.User
-	if err := r.db.Where("role = ?", role).Find(&users).Error; err != nil {
+	if err := r.db.Where("organization_id = ? AND role = ?", orgID, role).Find(&users).Error; err != nil {
 		return nil, err
 	}
 	return users, nil
