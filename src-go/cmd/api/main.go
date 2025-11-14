@@ -72,6 +72,10 @@ func main() {
 	partService := services.NewPartService(partRepository, inventoryTransactionRepository, notificationService)
 	partHandler := api.NewPartHandler(partService)
 
+	freightOrderRepository := repositories.NewFreightOrderRepository(gormDB)
+	freightOrderService := services.NewFreightOrderService(freightOrderRepository, vehicleRepository, journeyService)
+	freightOrderHandler := api.NewFreightOrderHandler(freightOrderService)
+
 	router := gin.Default()
 	router.Use(middleware.LoggingMiddleware())
 	router.Use(middleware.ErrorHandler())
@@ -91,6 +95,7 @@ func main() {
 			routes.RegisterMaintenanceRoutes(maintenanceHandler)(authRequired)
 			routes.RegisterFineRoutes(fineHandler)(authRequired)
 			routes.RegisterPartRoutes(partHandler)(authRequired)
+			routes.RegisterFreightOrderRoutes(freightOrderHandler)(authRequired)
 		}
 	}
 
