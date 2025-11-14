@@ -48,6 +48,7 @@ func main() {
 	freightOrderRepository := repositories.NewFreightOrderRepository(gormDB)
 	documentRepository := repositories.NewDocumentRepository(gormDB)
 	organizationRepository := repositories.NewOrganizationRepository(gormDB)
+	vehicleCostRepository := repositories.NewVehicleCostRepository(gormDB)
 
 	// Services
 	userService := services.NewUserService(userRepository)
@@ -58,12 +59,14 @@ func main() {
 	fuelLogService := services.NewFuelLogService(fuelLogRepository)
 	maintenanceService := services.NewMaintenanceService(maintenanceRepository)
 	notificationService := services.NewNotificationService(notificationRepository)
-	fineService := services.NewFineService(fineRepository, notificationService)
+	fineService := services.NewFineService(gormDB, fineRepository, vehicleCostRepository, notificationService)
 	partService := services.NewPartService(partRepository, inventoryTransactionRepository, notificationService)
 	freightOrderService := services.NewFreightOrderService(freightOrderRepository, vehicleRepository, journeyService)
 	fileStorageService := storage.NewLocalStorageService("static")
 	documentService := services.NewDocumentService(documentRepository, fileStorageService)
 	organizationService := services.NewOrganizationService(organizationRepository)
+	vehicleCostService := services.NewVehicleCostService(vehicleCostRepository)
+	dashboardService := services.NewDashboardService(userRepository, vehicleRepository, vehicleCostRepository, journeyRepository, maintenanceRepository, fineRepository, notificationRepository, partRepository, documentRepository, fuelLogRepository)
 
 	// Handlers
 	userHandler := api.NewUserHandler(userService)
@@ -78,6 +81,8 @@ func main() {
 	freightOrderHandler := api.NewFreightOrderHandler(freightOrderService)
 	documentHandler := api.NewDocumentHandler(documentService)
 	adminHandler := api.NewAdminHandler(organizationService, userService, authService)
+	vehicleCostHandler := api.NewVehicleCostHandler(vehicleCostService)
+	dashboardHandler := api.NewDashboardHandler(dashboardService)
 
 	router := gin.Default()
 	router.Use(middleware.LoggingMiddleware())
@@ -94,6 +99,9 @@ func main() {
 		authRequired := apiV1.Group("/")
 		authRequired.Use(middleware.AuthMiddleware(userService))
 		{
+			routes.RegisterDashboardRoutes(dashboardHandler)(authRequired)
+			routes.RegisterFineRoutes(fineHandler)(authRequired)
+
 			// SuperAdmin routes
 			superAdminRoutes := authRequired.Group("/admin")
 			superAdminRoutes.Use(middleware.AuthorizationMiddleware(models.RoleSuperAdmin))
@@ -110,6 +118,7 @@ func main() {
 				routes.RegisterImplementRoutes(implementHandler)(managerRoutes)
 				routes.RegisterPartRoutes(partHandler)(managerRoutes)
 				routes.RegisterDocumentRoutes(documentHandler)(managerRoutes)
+				routes.RegisterVehicleCostRoutes(vehicleCostHandler)(managerRoutes)
 				// Add other manager routes here
 			}
 

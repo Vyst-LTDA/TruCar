@@ -15,6 +15,7 @@ type VehicleRepository interface {
 	Create(vehicle *models.Vehicle) error
 	Update(vehicle *models.Vehicle) error
 	Delete(vehicle *models.Vehicle) error
+	FindLatestPositionsByOrganization(orgID uint) ([]models.Vehicle, error)
 }
 
 type vehicleRepository struct {
@@ -76,4 +77,13 @@ func (r *vehicleRepository) Update(vehicle *models.Vehicle) error {
 
 func (r *vehicleRepository) Delete(vehicle *models.Vehicle) error {
 	return r.db.Delete(vehicle).Error
+}
+
+func (r *vehicleRepository) FindLatestPositionsByOrganization(orgID uint) ([]models.Vehicle, error) {
+	var vehicles []models.Vehicle
+	// Esta consulta seleciona os campos necessários e garante que apenas veículos com localização sejam retornados.
+	err := r.db.Select("id", "license_plate", "last_latitude", "last_longitude", "last_location_update").
+		Where("organization_id = ? AND last_latitude IS NOT NULL AND last_longitude IS NOT NULL", orgID).
+		Find(&vehicles).Error
+	return vehicles, err
 }

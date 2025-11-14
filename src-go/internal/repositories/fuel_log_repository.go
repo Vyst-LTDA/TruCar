@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"errors"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -15,6 +16,7 @@ type FuelLogRepository interface {
 	Create(fuelLog *models.FuelLog) error
 	Update(fuelLog *models.FuelLog) error
 	Delete(fuelLog *models.FuelLog) error
+	SumFuelByOrganization(orgID uint, startDate time.Time) (float64, error)
 }
 
 type fuelLogRepository struct {
@@ -62,4 +64,14 @@ func (r *fuelLogRepository) Update(fuelLog *models.FuelLog) error {
 
 func (r *fuelLogRepository) Delete(fuelLog *models.FuelLog) error {
 	return r.db.Delete(fuelLog).Error
+}
+
+func (r *fuelLogRepository) SumFuelByOrganization(orgID uint, startDate time.Time) (float64, error) {
+	var totalFuel float64
+	err := r.db.Model(&models.FuelLog{}).
+		Where("organization_id = ? AND date >= ?", orgID, startDate).
+		Select("coalesce(sum(liters), 0)").
+		Row().
+		Scan(&totalFuel)
+	return totalFuel, err
 }

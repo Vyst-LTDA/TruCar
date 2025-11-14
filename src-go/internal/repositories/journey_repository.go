@@ -20,6 +20,7 @@ type JourneyRepository interface {
 	CheckVehicleAvailability(vehicleID uint) (bool, error)
 	UpdateVehicleStatus(vehicleID uint, status models.VehicleStatus) error
 	UpdateVehicleMileage(vehicleID uint, mileage int) error
+	SumDistanceByOrganization(orgID uint, startDate time.Time) (float64, error)
 }
 
 type journeyRepository struct {
@@ -92,4 +93,14 @@ func (r *journeyRepository) UpdateVehicleStatus(vehicleID uint, status models.Ve
 
 func (r *journeyRepository) UpdateVehicleMileage(vehicleID uint, mileage int) error {
 	return r.db.Model(&models.Vehicle{}).Where("id = ?", vehicleID).Update("current_km", mileage).Error
+}
+
+func (r *journeyRepository) SumDistanceByOrganization(orgID uint, startDate time.Time) (float64, error) {
+	var totalDistance float64
+	err := r.db.Model(&models.Journey{}).
+		Where("organization_id = ? AND start_time >= ?", orgID, startDate).
+		Select("coalesce(sum(end_km - start_km), 0)").
+		Row().
+		Scan(&totalDistance)
+	return totalDistance, err
 }

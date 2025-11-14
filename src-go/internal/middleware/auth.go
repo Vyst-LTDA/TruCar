@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"go-api/internal/core"
+	"go-api/internal/models"
 	"go-api/internal/services"
 )
 
@@ -39,4 +40,20 @@ func AuthMiddleware(userService services.UserService) gin.HandlerFunc {
 		c.Set("currentUser", *user)
 		c.Next()
 	}
+}
+
+// GetOrganizationID extrai o ID da organização do usuário autenticado no contexto.
+func GetOrganizationID(c *gin.Context) (uint, bool) {
+	user, exists := c.Get("currentUser")
+	if !exists {
+		return 0, false
+	}
+
+	// Faz o type assertion para o tipo User do pacote models.
+	currentUser, ok := user.(models.User)
+	if !ok {
+		return 0, false
+	}
+
+	return currentUser.OrganizationID, true
 }

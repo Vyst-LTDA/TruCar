@@ -14,6 +14,7 @@ type DocumentRepository interface {
 	FindByOrganization(orgID uint, skip, limit int, expiringInDays *int) ([]models.Document, error)
 	Create(doc *models.Document) (*models.Document, error)
 	Delete(doc *models.Document) error
+	CountByOrganization(orgID uint) (int64, error)
 }
 
 type documentRepository struct {
@@ -57,4 +58,12 @@ func (r *documentRepository) Create(doc *models.Document) (*models.Document, err
 
 func (r *documentRepository) Delete(doc *models.Document) error {
 	return r.db.Delete(doc).Error
+}
+
+func (r *documentRepository) CountByOrganization(orgID uint) (int64, error) {
+	var count int64
+	if err := r.db.Model(&models.Document{}).Where("organization_id = ?", orgID).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }

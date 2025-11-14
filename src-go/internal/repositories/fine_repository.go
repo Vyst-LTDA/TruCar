@@ -9,6 +9,7 @@ import (
 )
 
 type FineRepository interface {
+	WithTx(tx *gorm.DB) FineRepository
 	FindByID(fineID, orgID uint) (*models.Fine, error)
 	FindByOrganization(orgID uint, skip, limit int) ([]models.Fine, error)
 	FindByDriver(driverID, orgID uint, skip, limit int) ([]models.Fine, error)
@@ -23,6 +24,10 @@ type fineRepository struct {
 
 func NewFineRepository(db *gorm.DB) FineRepository {
 	return &fineRepository{db: db}
+}
+
+func (r *fineRepository) WithTx(tx *gorm.DB) FineRepository {
+	return &fineRepository{db: tx}
 }
 
 func (r *fineRepository) FindByID(fineID, orgID uint) (*models.Fine, error) {

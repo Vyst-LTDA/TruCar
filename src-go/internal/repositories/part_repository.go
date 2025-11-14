@@ -18,6 +18,7 @@ type PartRepository interface {
 	CreateItem(item *models.InventoryItem) (*models.InventoryItem, error)
 	UpdateItem(item *models.InventoryItem) (*models.InventoryItem, error)
 	FindItemsByPartID(partID uint, status *models.InventoryItemStatus) ([]models.InventoryItem, error)
+	CountByOrganization(orgID uint) (int64, error)
 }
 
 type partRepository struct {
@@ -97,4 +98,12 @@ func (r *partRepository) FindItemsByPartID(partID uint, status *models.Inventory
 		return nil, err
 	}
 	return items, nil
+}
+
+func (r *partRepository) CountByOrganization(orgID uint) (int64, error) {
+	var count int64
+	if err := r.db.Model(&models.Part{}).Where("organization_id = ?", orgID).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }

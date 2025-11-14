@@ -15,6 +15,8 @@ type UserRepository interface {
 	FindByOrganization(orgID uint, skip, limit int) ([]models.User, error)
 	FindAll(skip, limit int) ([]models.User, error) // Para Super Admin
 	FindByRole(role models.UserRole) ([]models.User, error) // Para Super Admin
+	CountByOrganization(orgID uint) (int64, error)
+	CountDriversByOrganization(orgID uint) (int64, error)
 	Create(user *models.User) error
 	Update(user *models.User) error
 	Delete(user *models.User) error
@@ -56,6 +58,23 @@ func (r *userRepository) FindByOrganization(orgID uint, skip, limit int) ([]mode
 		return nil, err
 	}
 	return users, nil
+}
+
+func (r *userRepository) CountByOrganization(orgID uint) (int64, error) {
+	var count int64
+	if err := r.db.Model(&models.User{}).Where("organization_id = ?", orgID).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *userRepository) CountDriversByOrganization(orgID uint) (int64, error) {
+	var count int64
+	query := r.db.Model(&models.User{}).Where("organization_id = ? AND role = ?", orgID, models.RoleDriver)
+	if err := query.Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (r *userRepository) Create(user *models.User) error {
