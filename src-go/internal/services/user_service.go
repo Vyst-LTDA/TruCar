@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"golang.org/x/crypto/bcrypt"
 
 	"go-api/internal/models"
@@ -14,6 +15,9 @@ type UserService interface {
 	CreateUser(userIn schemas.UserCreate, orgID uint) (*models.User, error)
 	UpdateUser(userID, orgID uint, userIn schemas.UserUpdate) (*models.User, error)
 	DeleteUser(userID, orgID uint) error
+	GetAllUsers(skip, limit int) ([]models.User, error)
+	GetDemoUsers() ([]models.User, error)
+	ActivateUser(userID uint) (*models.User, error)
 }
 
 type userService struct {
@@ -91,4 +95,30 @@ func (s *userService) DeleteUser(userID, orgID uint) error {
 	}
 
 	return s.repo.Delete(user)
+}
+
+func (s *userService) GetAllUsers(skip, limit int) ([]models.User, error) {
+	return s.repo.FindAll(skip, limit)
+}
+
+func (s *userService) GetDemoUsers() ([]models.User, error) {
+	return s.repo.FindByRole(models.RoleClienteDemo)
+}
+
+func (s *userService) ActivateUser(userID uint) (*models.User, error) {
+	user, err := s.repo.FindByIDUnscoped(userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, nil // Not found
+	}
+
+	if user.Role != models.RoleClienteDemo {
+		return nil, errors.New("user is not a demo client")
+	}
+
+	user.Role = models.RoleClienteAtivo
+	err = s.repo.Update(user)
+	return user, err
 }

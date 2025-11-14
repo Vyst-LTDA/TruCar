@@ -17,6 +17,7 @@ import (
 	"go-api/internal/db"
 	"go-api/internal/logging"
 	"go-api/internal/middleware"
+	"go-api/internal/models"
 	"go-api/internal/repositories"
 	"go-api/internal/services"
 	"go-api/internal/storage"
@@ -32,55 +33,51 @@ func main() {
 	db.Migrate(gormDB)
 	redisClient := db.InitRedis()
 
+	// Repositories
 	cacheRepository := repositories.NewRedisCacheRepository(redisClient)
-
 	userRepository := repositories.NewUserRepository(gormDB)
-	userService := services.NewUserService(userRepository)
-	userHandler := api.NewUserHandler(userService)
-
-	authService := services.NewAuthService(userRepository)
-	authHandler := api.NewAuthHandler(authService)
-
 	vehicleRepository := repositories.NewVehicleRepository(gormDB)
-	vehicleService := services.NewVehicleService(vehicleRepository, cacheRepository)
-	vehicleHandler := api.NewVehicleHandler(vehicleService)
-
 	implementRepository := repositories.NewImplementRepository(gormDB)
-	implementService := services.NewImplementService(implementRepository)
-	implementHandler := api.NewImplementHandler(implementService)
-
 	journeyRepository := repositories.NewJourneyRepository(gormDB)
-	journeyService := services.NewJourneyService(journeyRepository, vehicleRepository)
-	journeyHandler := api.NewJourneyHandler(journeyService)
-
 	fuelLogRepository := repositories.NewFuelLogRepository(gormDB)
-	fuelLogService := services.NewFuelLogService(fuelLogRepository)
-	fuelLogHandler := api.NewFuelLogHandler(fuelLogService)
-
 	maintenanceRepository := repositories.NewMaintenanceRepository(gormDB)
-	maintenanceService := services.NewMaintenanceService(maintenanceRepository)
-	maintenanceHandler := api.NewMaintenanceHandler(maintenanceService)
-
 	notificationRepository := repositories.NewNotificationRepository(gormDB)
-	notificationService := services.NewNotificationService(notificationRepository)
-
 	fineRepository := repositories.NewFineRepository(gormDB)
-	fineService := services.NewFineService(fineRepository, notificationService)
-	fineHandler := api.NewFineHandler(fineService)
-
 	partRepository := repositories.NewPartRepository(gormDB)
 	inventoryTransactionRepository := repositories.NewInventoryTransactionRepository(gormDB)
-	partService := services.NewPartService(partRepository, inventoryTransactionRepository, notificationService)
-	partHandler := api.NewPartHandler(partService)
-
 	freightOrderRepository := repositories.NewFreightOrderRepository(gormDB)
-	freightOrderService := services.NewFreightOrderService(freightOrderRepository, vehicleRepository, journeyService)
-	freightOrderHandler := api.NewFreightOrderHandler(freightOrderService)
-
-	fileStorageService := storage.NewLocalStorageService("static")
 	documentRepository := repositories.NewDocumentRepository(gormDB)
+	organizationRepository := repositories.NewOrganizationRepository(gormDB)
+
+	// Services
+	userService := services.NewUserService(userRepository)
+	authService := services.NewAuthService(userRepository)
+	vehicleService := services.NewVehicleService(vehicleRepository, cacheRepository)
+	implementService := services.NewImplementService(implementRepository)
+	journeyService := services.NewJourneyService(journeyRepository, vehicleRepository)
+	fuelLogService := services.NewFuelLogService(fuelLogRepository)
+	maintenanceService := services.NewMaintenanceService(maintenanceRepository)
+	notificationService := services.NewNotificationService(notificationRepository)
+	fineService := services.NewFineService(fineRepository, notificationService)
+	partService := services.NewPartService(partRepository, inventoryTransactionRepository, notificationService)
+	freightOrderService := services.NewFreightOrderService(freightOrderRepository, vehicleRepository, journeyService)
+	fileStorageService := storage.NewLocalStorageService("static")
 	documentService := services.NewDocumentService(documentRepository, fileStorageService)
+	organizationService := services.NewOrganizationService(organizationRepository)
+
+	// Handlers
+	userHandler := api.NewUserHandler(userService)
+	authHandler := api.NewAuthHandler(authService)
+	vehicleHandler := api.NewVehicleHandler(vehicleService)
+	implementHandler := api.NewImplementHandler(implementService)
+	journeyHandler := api.NewJourneyHandler(journeyService)
+	fuelLogHandler := api.NewFuelLogHandler(fuelLogService)
+	maintenanceHandler := api.NewMaintenanceHandler(maintenanceService)
+	fineHandler := api.NewFineHandler(fineService)
+	partHandler := api.NewPartHandler(partService)
+	freightOrderHandler := api.NewFreightOrderHandler(freightOrderService)
 	documentHandler := api.NewDocumentHandler(documentService)
+	adminHandler := api.NewAdminHandler(organizationService, userService, authService)
 
 	router := gin.Default()
 	router.Use(middleware.LoggingMiddleware())
@@ -90,21 +87,42 @@ func main() {
 
 	apiV1 := router.Group("/api/v1")
 	{
+		// Public routes
 		routes.RegisterLoginRoutes(authHandler)(apiV1)
 
+		// Authenticated routes
 		authRequired := apiV1.Group("/")
 		authRequired.Use(middleware.AuthMiddleware(userService))
 		{
-			routes.RegisterUserRoutes(userHandler)(authRequired)
-			routes.RegisterVehicleRoutes(vehicleHandler)(authRequired)
-			routes.RegisterImplementRoutes(implementHandler)(authRequired)
-			routes.RegisterJourneyRoutes(journeyHandler)(authRequired)
-			routes.RegisterFuelLogRoutes(fuelLogHandler)(authRequired)
-			routes.RegisterMaintenanceRoutes(maintenanceHandler)(authRequired)
-			routes.RegisterFineRoutes(fineHandler)(authRequired)
-			routes.RegisterPartRoutes(partHandler)(authRequired)
-			routes.RegisterFreightOrderRoutes(freightOrderHandler)(authRequired)
-			routes.RegisterDocumentRoutes(documentHandler)(authRequired)
+			// SuperAdmin routes
+			superAdminRoutes := authRequired.Group("/admin")
+			superAdminRoutes.Use(middleware.AuthorizationMiddleware(models.RoleSuperAdmin))
+			{
+				routes.RegisterAdminRoutes(adminHandler)(superAdminRoutes)
+			}
+
+			// Manager routes
+			managerRoutes := authRequired.Group("/")
+			managerRoutes.Use(middleware.AuthorizationMiddleware(models.RoleClienteAtivo, models.RoleClienteDemo))
+			{
+				routes.RegisterUserRoutes(userHandler)(managerRoutes)
+				routes.RegisterVehicleRoutes(vehicleHandler)(managerRoutes)
+				routes.RegisterImplementRoutes(implementHandler)(managerRoutes)
+				routes.RegisterPartRoutes(partHandler)(managerRoutes)
+				routes.RegisterDocumentRoutes(documentHandler)(managerRoutes)
+				// Add other manager routes here
+			}
+
+			// Driver and Manager routes
+			driverAndManagerRoutes := authRequired.Group("/")
+			driverAndManagerRoutes.Use(middleware.AuthorizationMiddleware(models.RoleDriver, models.RoleClienteAtivo, models.RoleClienteDemo))
+			{
+				routes.RegisterJourneyRoutes(journeyHandler)(driverAndManagerRoutes)
+				routes.RegisterFuelLogRoutes(fuelLogHandler)(driverAndManagerRoutes)
+				routes.RegisterMaintenanceRoutes(maintenanceHandler)(driverAndManagerRoutes)
+				routes.RegisterFineRoutes(fineHandler)(driverAndManagerRoutes)
+				routes.RegisterFreightOrderRoutes(freightOrderHandler)(driverAndManagerRoutes)
+			}
 		}
 	}
 
