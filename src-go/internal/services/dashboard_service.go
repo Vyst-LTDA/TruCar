@@ -188,11 +188,11 @@ func (s *dashboardService) GetVehiclePositions(orgID uint) ([]schemas.VehiclePos
 	positions := make([]schemas.VehiclePosition, len(vehicles))
 	for i, v := range vehicles {
 		positions[i] = schemas.VehiclePosition{
-			ID:          v.ID,
+			ID:           v.ID,
 			LicensePlate: *v.LicensePlate,
-			Latitude:    *v.LastLatitude,
-			Longitude:   *v.LastLongitude,
-			// Timestamp:   *v.LastLocationUpdate, // Campo não existe no modelo
+			Latitude:     *v.LastLatitude,
+			Longitude:    *v.LastLongitude,
+			Timestamp:    *v.LastLocationUpdate,
 		}
 	}
 

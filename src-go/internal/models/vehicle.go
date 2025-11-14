@@ -27,6 +27,7 @@ type Vehicle struct {
 	TelemetryDeviceID    *string `gorm:"size:100;uniqueIndex"`
 	LastLatitude         *float64
 	LastLongitude        *float64
+	LastLocationUpdate   *time.Time
 	NextMaintenanceDate  *time.Time
 	NextMaintenanceKM    *int
 	MaintenanceNotes     *string `gorm:"type:text"`

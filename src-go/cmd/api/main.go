@@ -49,6 +49,7 @@ func main() {
 	documentRepository := repositories.NewDocumentRepository(gormDB)
 	organizationRepository := repositories.NewOrganizationRepository(gormDB)
 	vehicleCostRepository := repositories.NewVehicleCostRepository(gormDB)
+	locationHistoryRepository := repositories.NewLocationHistoryRepository(gormDB)
 
 	// Services
 	userService := services.NewUserService(userRepository)
@@ -67,6 +68,7 @@ func main() {
 	organizationService := services.NewOrganizationService(organizationRepository)
 	vehicleCostService := services.NewVehicleCostService(vehicleCostRepository)
 	dashboardService := services.NewDashboardService(userRepository, vehicleRepository, vehicleCostRepository, journeyRepository, maintenanceRepository, fineRepository, notificationRepository, partRepository, documentRepository, fuelLogRepository)
+	gpsService := services.NewGPSService(vehicleRepository, locationHistoryRepository)
 
 	// Handlers
 	userHandler := api.NewUserHandler(userService)
@@ -83,6 +85,7 @@ func main() {
 	adminHandler := api.NewAdminHandler(organizationService, userService, authService)
 	vehicleCostHandler := api.NewVehicleCostHandler(vehicleCostService)
 	dashboardHandler := api.NewDashboardHandler(dashboardService)
+	gpsHandler := api.NewGPSHandler(gpsService)
 
 	router := gin.Default()
 	router.Use(middleware.LoggingMiddleware())
@@ -101,6 +104,7 @@ func main() {
 		{
 			routes.RegisterDashboardRoutes(dashboardHandler)(authRequired)
 			routes.RegisterFineRoutes(fineHandler)(authRequired)
+			routes.RegisterGPSRoutes(gpsHandler)(authRequired)
 
 			// SuperAdmin routes
 			superAdminRoutes := authRequired.Group("/admin")
