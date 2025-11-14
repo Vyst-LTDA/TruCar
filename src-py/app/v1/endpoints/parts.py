@@ -15,7 +15,8 @@ from app.models.notification_model import NotificationType
 # --- 1. ATUALIZAR IMPORTS ---
 from app.schemas.part_schema import (
     PartPublic, PartCreate, PartUpdate, 
-    InventoryItemPublic, PartListPublic, InventoryItemDetails
+    InventoryItemPublic, PartListPublic, InventoryItemDetails,
+    InventoryItemPage, InventoryItemRow # <-- Adicionar estes
 )
 # --- FIM DA ATUALIZAÇÃO ---
 from app.schemas.inventory_transaction_schema import TransactionPublic
@@ -241,8 +242,20 @@ async def set_inventory_item_status(
     item = await crud_part.get_item_by_id(db, item_id=item_id, organization_id=current_user.organization_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item de inventário não encontrado.")
-    if item.status != InventoryItemStatus.DISPONIVEL:
-        raise HTTPException(status_code=400, detail=f"Item não está disponível (status atual: {item.status}).")
+    new_status = payload.new_status
+    current_status = item.status
+
+    if new_status == InventoryItemStatus.EM_USO:
+        if current_status != InventoryItemStatus.DISPONIVEL:
+            raise HTTPException(status_code=400, detail=f"Item não está 'Disponível' e não pode ser colocado em uso (status atual: {current_status}).")
+    
+    elif new_status == InventoryItemStatus.FIM_DE_VIDA:
+        if current_status not in [InventoryItemStatus.DISPONIVEL, InventoryItemStatus.EM_USO]:
+             raise HTTPException(status_code=400, detail=f"Item não pode ser descartado pois seu status é '{current_status}'. Somente itens 'Disponível' ou 'Em Uso' podem ser descartados.")
+    
+    elif current_status != InventoryItemStatus.DISPONIVEL:
+        # Bloqueio padrão para outras transições não mapeadas (ex: Manutenção)
+         raise HTTPException(status_code=400, detail=f"Não é possível alterar o status do item pois ele não está 'Disponível' (status atual: {current_status}).")
     try:
         updated_item = await crud_part.change_item_status(
             db=db, item=item, new_status=payload.new_status,
@@ -288,6 +301,33 @@ async def read_item_details(
         raise HTTPException(status_code=404, detail="Item de inventário não encontrado.")
     return item
 # --- FIM DO NOVO ENDPOINT ---
+
+@router.get("/inventory/items/", response_model=InventoryItemPage)
+async def read_all_inventory_items(
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_manager),
+    skip: int = 0,
+    limit: int = 20,
+    status: Optional[InventoryItemStatus] = None,
+    part_id: Optional[int] = None,
+    vehicle_id: Optional[int] = None,
+    search: Optional[str] = None
+):
+    """
+    Obtém uma lista paginada de todos os itens de inventário individuais
+    com filtros para a página mestre de rastreabilidade.
+    """
+    result = await crud_part.get_all_items_paginated(
+        db=db,
+        organization_id=current_user.organization_id,
+        skip=skip,
+        limit=limit,
+        status=status,
+        part_id=part_id,
+        vehicle_id=vehicle_id,
+        search=search
+    )
+    return result
 
 @router.get("/{part_id}/items", response_model=List[InventoryItemPublic])
 async def get_items_for_part(

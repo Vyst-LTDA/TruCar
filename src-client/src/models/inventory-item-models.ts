@@ -1,18 +1,21 @@
-// --- 1. IMPORTAR OS NOVOS MODELOS ---
 import type { Part } from './part-models';
-import type { InventoryTransaction } from './inventory-transaction-models'; // <-- Adicionado
+import type { InventoryTransaction } from './inventory-transaction-models';
+import type { Vehicle } from './vehicle-models';
 
-export type InventoryItemStatus = "Disponível" | "Em Uso" | "Fim de Vida";
+// --- ESTA É A CORREÇÃO ---
+// Trocamos 'export type' por 'export enum' para que
+// ele exista como um objeto JavaScript no runtime.
+export enum InventoryItemStatus {
+  DISPONIVEL = "Disponível",
+  EM_USO = "Em Uso",
+  FIM_DE_VIDA = "Fim de Vida",
+}
+// --- FIM DA CORREÇÃO ---
 
 export interface InventoryItem {
-  id: number; // Este é o "código" global (Ex: 1, 2, 3, 4...)
-  
-  // --- ADICIONE ESTA LINHA ---
-  item_identifier: number; // Este é o "código" local (Ex: 1, 2 ... 1, 2)
-  // --- FIM DA ADIÇÃO ---
-
-  status: InventoryItemStatus;
-  
+  id: number;
+  item_identifier: number;
+  status: InventoryItemStatus; // Agora se refere ao enum
   part_id: number;
   installed_on_vehicle_id: number | null;
   created_at: string;
@@ -20,9 +23,20 @@ export interface InventoryItem {
   part: Part | null; 
 }
 
-// --- 2. CRIAR A NOVA INTERFACE DE DETALHES ---
-// (Corresponde ao schema InventoryItemDetails do backend)
 export interface InventoryItemDetails extends InventoryItem {
-  part: Part; // Em detalhes, a peça 'part' nunca será nula
-  transactions: InventoryTransaction[]; // O histórico completo
+  part: Part; 
+  transactions: InventoryTransaction[];
+}
+
+// Para a nova página (InventoryItemsPage.vue)
+export interface InventoryItemRow extends InventoryItem {
+  // 'part' já está no InventoryItem, mas aqui forçamos a não ser nulo
+  part: Part; 
+  // O backend envia um _VehicleInfo, que é um subconjunto de 'Vehicle'
+  installed_on_vehicle: Vehicle | null; 
+}
+
+export interface InventoryItemPage {
+  total: number;
+  items: InventoryItemRow[]; // Note que aqui é InventoryItemRow
 }

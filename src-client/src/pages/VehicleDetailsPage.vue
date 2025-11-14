@@ -155,7 +155,8 @@
           <!-- CORREÇÃO: Slot para a célula customizada -->
           <template v-slot:body-cell-part_and_item="props">
             <q-td :props="props">
-              <div>{{ props.row.part?.name || props.row.item?.part?.name || 'Peça N/A' }}</div>
+              <div>{{ getPartName(props.row.item?.part_id || props.row.part?.id) }}</div>
+              
               <a
                 v-if="props.row.item"
                 href="#"
@@ -169,8 +170,7 @@
               <span v-else class="text-grey">(Item N/A)</span>
             </q-td>
           </template>
-          <!-- FIM DO SLOT -->
-        </q-table>
+          </q-table>
       </q-tab-panel>
 
       <q-tab-panel name="components">
@@ -373,6 +373,7 @@ import { useMaintenanceStore } from 'stores/maintenance-store';
 import { useTireStore } from 'stores/tire-store';
 
 // Models
+import { InventoryItemStatus } from 'src/models/inventory-item-models'; // <-- ADICIONE ESTA IMPORTAÇÃO
 import type { VehicleComponent } from 'src/models/vehicle-component-models';
 import type { InventoryTransaction } from 'src/models/inventory-transaction-models';
 import type { Part } from 'src/models/part-models';
@@ -436,17 +437,23 @@ const axleConfigOptions = Object.keys(axleLayouts).map(key => ({
 }));
 
 async function refreshAllVehicleData() {
-  isHistoryLoading.value = true;
-  await Promise.all([
-    fetchHistory(),
-    partStore.fetchParts(), // <-- Importante para ter os nomes
-    vehicleStore.fetchVehicleById(vehicleId),
-    costStore.fetchCosts(vehicleId),
-    componentStore.fetchComponents(vehicleId),
-    maintenanceStore.fetchMaintenanceRequests({ vehicleId: vehicleId, limit: 100 }),
-    tireStore.fetchTireLayout(vehicleId),
-    tireStore.fetchRemovedTiresHistory(vehicleId),
-  ]);
+isHistoryLoading.value = true;
+  
+  // --- A CORREÇÃO ESTÁ AQUI ---
+  // 1. Primeiro, buscamos os nomes das peças e ESPERAMOS eles chegarem.
+  //    Isso garante que partStore.parts estará preenchido.
+  await partStore.fetchParts();
+
+  // 2. Agora que temos os nomes, buscamos todo o resto em paralelo.
+await Promise.all([
+fetchHistory(), // Esta função agora pode confiar que partStore.parts existe
+vehicleStore.fetchVehicleById(vehicleId),
+costStore.fetchCosts(vehicleId),
+componentStore.fetchComponents(vehicleId),
+ maintenanceStore.fetchMaintenanceRequests({ vehicleId: vehicleId, limit: 100 }),
+ tireStore.fetchTireLayout(vehicleId),
+tireStore.fetchRemovedTiresHistory(vehicleId), // <-- BUSCA O HISTÓRICO CORRETO
+ ]);
   isHistoryLoading.value = false;
 }
 
@@ -572,16 +579,9 @@ const historyColumns: QTableColumn<InventoryTransaction>[] = [
       name: 'part_and_item', 
       label: 'Peça / Cód. Item', 
       field: (row) => {
-          // 1. Achar o ID da peça (template)
-          // A transação pode estar ligada ao item (row.item.part_id)
-          // ou diretamente ao template (row.part.id)
           const partId = row.item?.part_id || row.part?.id;
-
-          // 2. Buscar o nome no partStore (fonte mais confiável)
           const partFromStore = partStore.parts.find(p => p.id === partId);
-          
-          // 3. Definir a ordem de prioridade correta
-          //    Priorizamos o partStore, que é carregado no onMounted.
+
           const name = partFromStore?.name ||   // 1º: Tentar o partStore (confiável)
                        row.part?.name ||          // 2º: Tentar o 'part' da transação
                        row.item?.part?.name ||    // 3º: Tentar o 'part' do item da transação
@@ -672,6 +672,15 @@ async function fetchHistory() {
   } finally {
     isHistoryLoading.value = false;
   }
+}
+
+function getPartName(partId: number | undefined | null): string {
+  if (!partId) return 'Peça N/A';
+  
+  // partStore.parts foi carregado no 'onMounted'
+  const part = partStore.parts.find(p => p.id === partId);
+  
+  return part?.name || 'Peça N/A';
 }
 
 // ... (Funções de Pneu: openInstallDialog, handleInstallTire, openRemoveDialog, handleUpdateAxleConfig, filterTires) ...
@@ -800,7 +809,7 @@ function confirmDiscard(component: VehicleComponent) {
             // Precisamos do item_id
             const item_id = component.inventory_transaction?.item?.id;
             if (item_id) {
-               const success = await partStore.setItemStatus(component.part.id, item_id, 'Fim de Vida', undefined, "Descartado pelo gerenciador de componentes.");
+               const success = await partStore.setItemStatus(component.part.id, item_id, InventoryItemStatus.FIM_DE_VIDA, undefined, "Descartado pelo gerenciador de componentes.");
                if (success) await refreshAllVehicleData();
             } else {
               $q.notify({ type: 'negative', message: 'Erro: Não foi possível encontrar o ID do item de inventário associado.' });

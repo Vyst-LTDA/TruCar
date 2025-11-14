@@ -5,7 +5,14 @@ import { isAxiosError } from 'axios';
 import type { Part, PartCreate } from 'src/models/part-models';
 import type { InventoryTransaction } from 'src/models/inventory-transaction-models';
 // --- 1. IMPORTAR O NOVO MODELO ---
-import type { InventoryItem, InventoryItemStatus, InventoryItemDetails } from 'src/models/inventory-item-models';
+import type { 
+  InventoryItem, 
+  InventoryItemDetails, 
+  InventoryItemPage, // <-- Adicionado
+  InventoryItemRow  // <-- Adicionado
+} from 'src/models/inventory-item-models';
+import { InventoryItemStatus } from 'src/models/inventory-item-models';
+
 
 export interface PartCreatePayload extends PartCreate {
   photo_file?: File | null;
@@ -23,6 +30,10 @@ export const usePartStore = defineStore('part', {
     isItemDetailsLoading: false,
     // --- FIM DO NOVO STATE ---
     
+    masterItemList: [] as InventoryItemRow[],
+    isMasterListLoading: false,
+    masterListTotal: 0,
+
     isLoading: false,
     isHistoryLoading: false,
     isItemsLoading: false,
@@ -39,6 +50,39 @@ export const usePartStore = defineStore('part', {
         Notify.create({ type: 'negative', message: 'Falha ao carregar as peças do inventário.' });
       } finally {
         this.isLoading = false;
+      }
+    },
+
+
+    async fetchMasterItems(options: { 
+      page: number, 
+      rowsPerPage: number, 
+      status?: InventoryItemStatus | null,
+      partId?: number | null,
+      vehicleId?: number | null,
+      search?: string | null 
+    }) {
+      this.isMasterListLoading = true;
+      try {
+        const params = {
+          skip: (options.page - 1) * options.rowsPerPage,
+          limit: options.rowsPerPage,
+          status: options.status || undefined,
+          part_id: options.partId || undefined,
+          vehicle_id: options.vehicleId || undefined,
+          search: options.search || undefined,
+        };
+    
+        const response = await api.get<InventoryItemPage>('/parts/inventory/items/', { params });
+        
+        this.masterItemList = response.data.items;
+        this.masterListTotal = response.data.total;
+        
+      } catch (error) {
+        Notify.create({ type: 'negative', message: 'Falha ao carregar itens de inventário.' });
+        console.error(error);
+      } finally {
+        this.isMasterListLoading = false;
       }
     },
 
@@ -136,11 +180,6 @@ export const usePartStore = defineStore('part', {
       try {
         const payload = { new_status: newStatus, related_vehicle_id: vehicleId, notes };
         await api.put(`/parts/items/${itemId}/set-status`, payload);
-
-        const index = this.parts.findIndex(p => p.id === partId);
-        if (index !== -1) {
-          this.parts[index]!.stock -= 1; 
-        }
         
         Notify.create({ type: 'positive', message: 'Status do item atualizado com sucesso!' });
         return true;
@@ -175,7 +214,10 @@ export const usePartStore = defineStore('part', {
       this.availableItems = [];
       try {
         const response = await api.get<InventoryItem[]>(`/parts/${partId}/items`, {
-          params: { status: 'Disponível' }
+          params: { 
+            // Substitua a string hardcoded pelo Enum
+            status: InventoryItemStatus.DISPONIVEL 
+          }
         });
         this.availableItems = response.data;
       } catch {
@@ -184,7 +226,6 @@ export const usePartStore = defineStore('part', {
         this.isItemsLoading = false;
       }
     },
-
     async fetchHistory(partId: number) {
       this.isHistoryLoading = true;
       this.selectedPartHistory = [];
