@@ -19,6 +19,7 @@ import (
 	"go-api/internal/middleware"
 	"go-api/internal/repositories"
 	"go-api/internal/services"
+	"go-api/internal/storage"
 )
 
 func main() {
@@ -76,9 +77,16 @@ func main() {
 	freightOrderService := services.NewFreightOrderService(freightOrderRepository, vehicleRepository, journeyService)
 	freightOrderHandler := api.NewFreightOrderHandler(freightOrderService)
 
+	fileStorageService := storage.NewLocalStorageService("static")
+	documentRepository := repositories.NewDocumentRepository(gormDB)
+	documentService := services.NewDocumentService(documentRepository, fileStorageService)
+	documentHandler := api.NewDocumentHandler(documentService)
+
 	router := gin.Default()
 	router.Use(middleware.LoggingMiddleware())
 	router.Use(middleware.ErrorHandler())
+
+	router.Static("/static", "./static")
 
 	apiV1 := router.Group("/api/v1")
 	{
@@ -96,6 +104,7 @@ func main() {
 			routes.RegisterFineRoutes(fineHandler)(authRequired)
 			routes.RegisterPartRoutes(partHandler)(authRequired)
 			routes.RegisterFreightOrderRoutes(freightOrderHandler)(authRequired)
+			routes.RegisterDocumentRoutes(documentHandler)(authRequired)
 		}
 	}
 
