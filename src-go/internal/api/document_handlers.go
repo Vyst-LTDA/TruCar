@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"go-api/internal/models"
+	"go-api/internal/middleware"
 	"go-api/internal/schemas"
 	"go-api/internal/services"
 )
@@ -20,8 +20,11 @@ func NewDocumentHandler(service services.DocumentService) *DocumentHandler {
 }
 
 func (h *DocumentHandler) GetDocuments(c *gin.Context) {
-	user, _ := c.Get("currentUser")
-	currentUser := user.(models.User)
+	orgID, exists := middleware.GetOrganizationID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Organização não identificada"})
+		return
+	}
 
 	skip, _ := strconv.Atoi(c.DefaultQuery("skip", "0"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
@@ -31,7 +34,7 @@ func (h *DocumentHandler) GetDocuments(c *gin.Context) {
 		expiringInDays = &val
 	}
 
-	docs, err := h.service.GetDocuments(currentUser.OrganizationID, skip, limit, expiringInDays)
+	docs, err := h.service.GetDocuments(orgID, skip, limit, expiringInDays)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch documents"})
 		return
@@ -53,10 +56,13 @@ func (h *DocumentHandler) CreateDocument(c *gin.Context) {
 		return
 	}
 
-	user, _ := c.Get("currentUser")
-	currentUser := user.(models.User)
+	orgID, exists := middleware.GetOrganizationID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Organização não identificada"})
+		return
+	}
 
-	createdDoc, err := h.service.CreateDocument(docIn, file, currentUser.OrganizationID)
+	createdDoc, err := h.service.CreateDocument(docIn, file, orgID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create document"})
 		return
@@ -66,15 +72,28 @@ func (h *DocumentHandler) CreateDocument(c *gin.Context) {
 }
 
 func (h *DocumentHandler) DeleteDocument(c *gin.Context) {
-	docID, _ := strconv.Atoi(c.Param("id"))
-	user, _ := c.Get("currentUser")
-	currentUser := user.(models.User)
+	docID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID de documento inválido"})
+		return
+	}
 
-	err := h.service.DeleteDocument(uint(docID), currentUser.OrganizationID)
+	orgID, exists := middleware.GetOrganizationID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Organização não identificada"})
+		return
+	}
+
+	deleted, err := h.service.DeleteDocument(uint(docID), orgID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete document"})
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	if !deleted {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Document not found"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }

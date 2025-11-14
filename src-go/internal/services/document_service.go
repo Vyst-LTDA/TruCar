@@ -12,7 +12,7 @@ import (
 type DocumentService interface {
 	GetDocuments(orgID uint, skip, limit int, expiringInDays *int) ([]models.Document, error)
 	CreateDocument(docIn schemas.DocumentCreate, file *multipart.FileHeader, orgID uint) (*models.Document, error)
-	DeleteDocument(docID, orgID uint) error
+	DeleteDocument(docID, orgID uint) (bool, error)
 }
 
 type documentService struct {
@@ -47,13 +47,13 @@ func (s *documentService) CreateDocument(docIn schemas.DocumentCreate, file *mul
 	return s.repo.Create(doc)
 }
 
-func (s *documentService) DeleteDocument(docID, orgID uint) error {
+func (s *documentService) DeleteDocument(docID, orgID uint) (bool, error) {
 	doc, err := s.repo.FindByID(docID, orgID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if doc == nil {
-		return nil // Not found
+		return false, nil // Not found
 	}
 
 	err = s.storageService.Delete(doc.FileURL)
@@ -62,5 +62,10 @@ func (s *documentService) DeleteDocument(docID, orgID uint) error {
 		// logging.Logger.Error("Failed to delete document file", zap.Error(err), zap.String("fileURL", doc.FileURL))
 	}
 
-	return s.repo.Delete(doc)
+	err = s.repo.Delete(doc)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
