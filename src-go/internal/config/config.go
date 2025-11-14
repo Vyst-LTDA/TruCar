@@ -33,7 +33,6 @@ func LoadConfig() {
 	viper.SetDefault("REDIS_ADDR", "localhost:6379")
 	viper.SetDefault("REDIS_PASSWORD", "")
 	viper.SetDefault("REDIS_DB", 0)
-	viper.SetDefault("SECRET_KEY", "a-very-secret-key-of-32-bytes-!")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -54,11 +53,17 @@ func LoadConfig() {
 		f.WriteString("DB_DSN=test.db\n")
 		f.WriteString("JWT_SECRET=your-secret-key\n")
 		f.WriteString("SERVER_PORT=8080\n")
-		f.WriteString("SECRET_KEY=a-very-secret-key-of-32-bytes-!\n")
 	}
 
 	err := viper.Unmarshal(&AppConfig)
 	if err != nil {
 		logging.Logger.Fatal("Unable to decode into struct", zap.Error(err))
+	}
+
+	if AppConfig.SECRET_KEY == "" {
+		logging.Logger.Fatal("SECRET_KEY is not set. Please set it in your .env file or environment variables.")
+	}
+	if len(AppConfig.SECRET_KEY) != 32 {
+		logging.Logger.Fatal("SECRET_KEY must be 32 bytes long for AES-256.")
 	}
 }

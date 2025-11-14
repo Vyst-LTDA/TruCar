@@ -3,6 +3,7 @@ module go-api
 go 1.24.3
 
 require (
+	github.com/SebastiaanKlippert/go-wkhtmltopdf v1.9.3
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-redis/redis/v8 v8.11.5

@@ -1,11 +1,12 @@
 package services
 
 import (
-	"fmt"
+	"go-api/internal/logging"
 	"go-api/internal/models"
 	"go-api/internal/repositories"
 	"go-api/internal/schemas"
 	"time"
+	"go.uber.org/zap"
 )
 
 // GPSService define a interface para a lógica de negócios de GPS.
@@ -35,7 +36,7 @@ func (s *gpsService) ProcessPing(ping schemas.LocationCreate, orgID uint) {
 		// 1. Atualizar a localização atual do veículo
 		vehicle, err := s.vehicleRepo.FindByID(ping.VehicleID, orgID)
 		if err != nil || vehicle == nil {
-			fmt.Printf("Erro ao buscar veículo para ping de GPS: %v\n", err)
+			logging.Logger.Error("Failed to find vehicle for GPS ping", zap.Error(err), zap.Uint("vehicleID", ping.VehicleID), zap.Uint("orgID", orgID))
 			return
 		}
 
@@ -45,7 +46,7 @@ func (s *gpsService) ProcessPing(ping schemas.LocationCreate, orgID uint) {
 		vehicle.LastLocationUpdate = &now
 
 		if err := s.vehicleRepo.Update(vehicle); err != nil {
-			fmt.Printf("Erro ao atualizar localização do veículo: %v\n", err)
+			logging.Logger.Error("Failed to update vehicle location", zap.Error(err), zap.Uint("vehicleID", vehicle.ID))
 			return
 		}
 
@@ -58,7 +59,7 @@ func (s *gpsService) ProcessPing(ping schemas.LocationCreate, orgID uint) {
 		}
 
 		if err := s.historyRepo.Create(history); err != nil {
-			fmt.Printf("Erro ao criar histórico de localização: %v\n", err)
+			logging.Logger.Error("Failed to create location history", zap.Error(err), zap.Uint("vehicleID", vehicle.ID))
 		}
 	}()
 }

@@ -70,6 +70,8 @@ func main() {
 	dashboardService := services.NewDashboardService(userRepository, vehicleRepository, vehicleCostRepository, journeyRepository, maintenanceRepository, fineRepository, notificationRepository, partRepository, documentRepository, fuelLogRepository)
 	gpsService := services.NewGPSService(vehicleRepository, locationHistoryRepository)
 	leaderboardService := services.NewLeaderboardService(userRepository, journeyRepository, fineRepository)
+	reportService := services.NewReportService(journeyRepository, fuelLogRepository, vehicleCostRepository)
+	reportGeneratorService := services.NewReportGeneratorService()
 
 	// Handlers
 	userHandler := api.NewUserHandler(userService)
@@ -90,6 +92,8 @@ func main() {
 	notificationHandler := api.NewNotificationHandler(notificationService)
 	leaderboardHandler := api.NewLeaderboardHandler(leaderboardService)
 	settingsHandler := api.NewSettingsHandler(organizationService)
+	reportHandler := api.NewReportHandler(reportService)
+	reportGeneratorHandler := api.NewReportGeneratorHandler(reportGeneratorService, reportService)
 
 	router := gin.Default()
 	router.Use(middleware.LoggingMiddleware())
@@ -130,6 +134,8 @@ func main() {
 				routes.RegisterPartRoutes(partHandler)(managerRoutes)
 				routes.RegisterDocumentRoutes(documentHandler)(managerRoutes)
 				routes.RegisterVehicleCostRoutes(vehicleCostHandler)(managerRoutes)
+				routes.RegisterReportRoutes(reportHandler)(managerRoutes)
+				routes.RegisterReportGeneratorRoutes(reportGeneratorHandler)(managerRoutes)
 				// Add other manager routes here
 			}
 
