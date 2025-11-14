@@ -67,6 +67,11 @@ func main() {
 	fineService := services.NewFineService(fineRepository, notificationService)
 	fineHandler := api.NewFineHandler(fineService)
 
+	partRepository := repositories.NewPartRepository(gormDB)
+	inventoryTransactionRepository := repositories.NewInventoryTransactionRepository(gormDB)
+	partService := services.NewPartService(partRepository, inventoryTransactionRepository, notificationService)
+	partHandler := api.NewPartHandler(partService)
+
 	router := gin.Default()
 	router.Use(middleware.LoggingMiddleware())
 	router.Use(middleware.ErrorHandler())
@@ -85,6 +90,7 @@ func main() {
 			routes.RegisterFuelLogRoutes(fuelLogHandler)(authRequired)
 			routes.RegisterMaintenanceRoutes(maintenanceHandler)(authRequired)
 			routes.RegisterFineRoutes(fineHandler)(authRequired)
+			routes.RegisterPartRoutes(partHandler)(authRequired)
 		}
 	}
 

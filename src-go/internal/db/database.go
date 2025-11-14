@@ -31,6 +31,11 @@ func Migrate(db *gorm.DB) {
 		&models.FuelLog{},
 		&models.MaintenanceRequest{},
 		&models.MaintenanceComment{},
+		&models.Fine{},
+		&models.Notification{},
+		&models.Part{},
+		&models.InventoryItem{},
+		&models.InventoryTransaction{},
 	)
 	if err != nil {
 		logging.Logger.Fatal("Failed to migrate database", zap.Error(err))
