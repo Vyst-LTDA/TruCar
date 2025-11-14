@@ -7,6 +7,7 @@ import (
 type UserRole string
 
 const (
+	RoleSuperAdmin   UserRole = "super_admin"
 	RoleClienteAtivo UserRole = "cliente_ativo"
 	RoleClienteDemo  UserRole = "cliente_demo"
 	RoleDriver       UserRole = "driver"

@@ -1,42 +1,61 @@
 package db
 
 import (
-	"log"
-	"os"
+	"context"
 
+	"github.com/go-redis/redis/v8"
+	"go.uber.org/zap"
+	"go-api/internal/logging"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 
+	"go-api/internal/config"
 	"go-api/internal/models"
 )
 
-var DB *gorm.DB
+func InitDB() *gorm.DB {
+	db, err := gorm.Open(sqlite.Open(config.AppConfig.DB_DSN), &gorm.Config{})
+	if err != nil {
+		logging.Logger.Fatal("Failed to connect to database", zap.Error(err))
+	}
+	return db
+}
 
-func InitDB() {
-	var err error
-	DB, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{
-		Logger: logger.New(
-			log.New(os.Stdout, "\r\n", log.LstdFlags),
-			logger.Config{
-				LogLevel: logger.Info,
-				Colorful: true,
-			},
-		),
+func Migrate(db *gorm.DB) {
+	err := db.AutoMigrate(
+		&models.User{},
+		&models.Organization{},
+		&models.Vehicle{},
+		&models.Implement{},
+		&models.Journey{},
+		&models.FuelLog{},
+		&models.MaintenanceRequest{},
+		&models.MaintenanceComment{},
+		&models.Fine{},
+		&models.Notification{},
+		&models.Part{},
+		&models.InventoryItem{},
+		&models.InventoryTransaction{},
+		&models.FreightOrder{},
+		&models.StopPoint{},
+		&models.Document{},
+	)
+	if err != nil {
+		logging.Logger.Fatal("Failed to migrate database", zap.Error(err))
+	}
+}
+
+func InitRedis() *redis.Client {
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     config.AppConfig.REDIS_ADDR,
+		Password: config.AppConfig.REDIS_PASSWORD,
+		DB:       config.AppConfig.REDIS_DB,
 	})
+
+	_, err := rdb.Ping(context.Background()).Result()
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		logging.Logger.Fatal("Could not connect to Redis", zap.Error(err))
 	}
 
-	sqlDB, err := DB.DB()
-	if err != nil {
-		log.Fatal("Failed to get database connection pool:", err)
-	}
-
-	sqlDB.SetMaxIdleConns(10)
-	sqlDB.SetMaxOpenConns(100)
-
-	if err := DB.AutoMigrate(&models.User{}, &models.Organization{}, &models.Vehicle{}, &models.Journey{}, &models.Implement{}, &models.FuelLog{}, &models.MaintenanceRequest{}, &models.MaintenanceComment{}); err != nil {
-		log.Fatal("Failed to auto-migrate database:", err)
-	}
+	return rdb
 }
